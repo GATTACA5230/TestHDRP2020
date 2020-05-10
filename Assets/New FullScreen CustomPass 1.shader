@@ -1,5 +1,14 @@
 ﻿Shader "FullScreen/NewFullScreenCustomPass1"
 {
+    Properties {
+        _BL ("Bottom Left", Range(0,1)) = 1
+        _BR ("Bottom Right", Range(0,1)) = 1
+        _TL ("Top Left", Range(0,1)) = 1
+        _TR ("Top Right", Range(0,1)) = 1 
+        _DDX ("DDX", Range(0,1)) = 1 
+        _DDY ("DDY", Range(0,1)) = 1 
+    }
+    
     HLSLINCLUDE
 
     #pragma vertex Vert
@@ -30,6 +39,8 @@
 
     // There are also a lot of utility function you can use inside Common.hlsl and Color.hlsl,
     // you can check them out in the source code of the core SRP package.
+    
+    float _BL,_BR,_TL,_TR,_DDX,_DDY;
 
     float4 FullScreenPass(Varyings varyings) : SV_Target
     {
@@ -44,10 +55,29 @@
             color = float4(CustomPassLoadCameraColor(varyings.positionCS.xy, 0), 1);
 
         // Add your custom pass code here
+        uint2 screenPos = uint2(varyings.positionCS.xy);
+        if(screenPos.x % 2 == 0 && screenPos.y % 2 == 0)
+            color = _BL;
+        if(screenPos.x % 2 == 1 && screenPos.y % 2 == 0)
+            color = _BR;
+        if(screenPos.x % 2 == 0 && screenPos.y % 2 == 1)
+            color = _TL;
+        if(screenPos.x % 2 == 1 && screenPos.y % 2 == 1)
+            color = _TR;
+        
+        float r = color.r;
+        float ddxx = ddx(r);
+        float ddyy = ddy(r);
+        float finalColor = float4(r,r,r,1);
+        if(_DDX)
+            finalColor = float4(ddxx,ddxx,ddxx,1);
+        if(_DDY)
+            finalColor = float4(ddyy,ddyy,ddyy,1);
+        return finalColor;
 
         // Fade value allow you to increase the strength of the effect while the camera gets closer to the custom pass volume
-        float f = 1 - abs(_FadeValue * 2 - 1);
-        return float4(color.rgb + f, color.a);
+        //float f = 1 - abs(_FadeValue * 2 - 1);
+        //return float4(color.rgb + f, color.a);
     }
 
     ENDHLSL
