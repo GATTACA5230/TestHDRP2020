@@ -4,8 +4,10 @@
         _ContrastThreshold ("Contrast Threshold", Float) = 0.5
         _ContrastInput ("Contrast Input", Float) = 1
         _DivideFactor ("Divide Factor", Float) = 2
-        _OutlineWidth ("Outline Width", Int) = 1
+        _OutlineWidth ("Outline Width", Float) = 1
         _OutlineColor ("Outline Color", Color) = (1,1,1,1)
+        _NormalFactor ("Normal Factor", Float) = 1
+        
     }
     
     HLSLINCLUDE
@@ -44,7 +46,25 @@
     float _ContrastInput;
     float _DivideFactor;
     int _OutlineWidth;
-    float4 _OutlineColor;
+    float4 _OutlineColor; 
+    SAMPLER(sampler_NormalBufferTexture);
+    float _NormalFactor;
+    
+    // Incorrect result
+    float SampleCameraDepthSK(float2 uv)
+    {
+        return SAMPLE_TEXTURE2D_X_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, uv * _RTHandleScaleHistory.xy, 0).r;
+    }
+     
+    void DecodeFromNormalBufferNDC(float2 positionNDC, out NormalData normalData)
+    {
+        float4 normalBuffer = SAMPLE_TEXTURE2D_X(_NormalBufferTexture, sampler_NormalBufferTexture, positionNDC);
+        DecodeFromNormalBuffer(normalBuffer, positionNDC, normalData);
+    }
+    
+    float Contrast(float contrastInput, float valueInput){
+        return ((valueInput - 0.5f) * contrastInput) + 0.5f;
+    }
 
     float4 FullScreenPass(Varyings varyings) : SV_Target
     {
@@ -57,85 +77,163 @@
         // Load the camera color buffer at the mip 0 if we're not at the before rendering injection point
         if (_CustomPassInjectionPoint != CUSTOMPASSINJECTIONPOINT_BEFORE_RENDERING)
             color = float4(CustomPassLoadCameraColor(varyings.positionCS.xy, 0), 1);
+            
+        float4 finalColor;
+        float outlineWidth;
+        float distanceSumNormal;
+        float distanceSumDepth;
+        float distanceSum;
+        float distanceXNormal;
+        float distanceXDepth;
+        float distanceYNormal;
+        float distanceYDepth;
+        float deviceDepth;
+        float linearDepth;
+        float md;
+        float mn;
 
         // Add your custom pass code here
         
         // get color
-        //return color;
+        
+        //// Method 1
+        ////finalColor = color;
+        //
+        ////Method2
+        //// Load the camera color buffer at the mip 0 if we're not at the before rendering injection point
+        //if (_CustomPassInjectionPoint != CUSTOMPASSINJECTIONPOINT_BEFORE_RENDERING)
+        //    color = float4(CustomPassSampleCameraColor(varyings.positionCS.xy * _ScreenSize.zw, 0), 1);
+        //finalColor = color;
         
         // get device depth
-        //float deviceDepth = depth;
-        //deviceDepth = posInput.deviceDepth;
-        //float4 depthColor = float4(deviceDepth,deviceDepth,deviceDepth,1);
-        //return depthColor;
+        
+        //// Method 1
+        ////deviceDepth = depth;
+        //
+        //// Method 2
+        ////deviceDepth = posInput.deviceDepth;
+        //
+        //// Method 3
+        ////deviceDepth = SampleCameraDepth(varyings.positionCS.xy * _ScreenSize.zw);
+        //
+        //// Method 4 (Incorrect result)
+        //deviceDepth = SampleCameraDepthSK(varyings.positionCS.xy * _ScreenSize.zw);
+        //
+        //finalColor = float4(deviceDepth,deviceDepth,deviceDepth,1);
         
         // get linear depth
-        //float linearDepth = posInput.linearDepth;
-        //float4 linearDepthColor = float4(linearDepth,linearDepth,linearDepth,1);
-        //return linearDepthColor;
+        //linearDepth = posInput.linearDepth;
+        //finalColor = float4(linearDepth,linearDepth,linearDepth,1);
         
-        // get world position
+        // get absolute world position
         //float3 positionWS = posInput.positionWS;
         //positionWS = GetAbsolutePositionWS(positionWS);
-        //return float4(positionWS,1);
+        //finalColor = float4(positionWS,1);
         
         // get world normal
-        //NormalData normalData;
-        //DecodeFromNormalBuffer(posInput.positionSS, normalData);
-        //return float4(normalData.normalWS,1);
+        NormalData normalData;
+        
+        // Method 1
+        DecodeFromNormalBuffer(posInput.positionSS, normalData);
+        
+        // Method 2
+        //DecodeFromNormalBufferNDC(posInput.positionNDC, normalData);
+        
+        finalColor = float4(normalData.normalWS,1);
         
         // get UNITY_MATRIX_I_VP
         //if(posInput.positionNDC.x < 0.5 && posInput.positionNDC.y < 0.5)
-        //    return UNITY_MATRIX_I_VP[0];
+        //    finalColor = UNITY_MATRIX_I_VP[0];
         //    
         //if(posInput.positionNDC.x > 0.5 && posInput.positionNDC.y < 0.5)
-        //    return UNITY_MATRIX_I_VP[1];
+        //    finalColor =  UNITY_MATRIX_I_VP[1];
         //    
         //if(posInput.positionNDC.x < 0.5 && posInput.positionNDC.y > 0.5)
-        //    return UNITY_MATRIX_I_VP[2];
+        //    finalColor =  UNITY_MATRIX_I_VP[2];
         //    
         //if(posInput.positionNDC.x > 0.5 && posInput.positionNDC.y > 0.5)
-        //    return UNITY_MATRIX_I_VP[3];
+        //    finalColor =  UNITY_MATRIX_I_VP[3];
         
         // get positionNDC[0, 1)
         //float2 positionNDC = posInput.positionNDC;
-        //return float4(positionNDC,0,1);
+        //finalColor = float4(positionNDC,0,1);
         
         // get clip space position
         //float4 positionCS = ComputeClipSpacePosition(posInput.positionNDC, posInput.deviceDepth);
-        //return positionCS;
+        //finalColor = positionCS;
         
         // ddx & ddy outline by device depth
-        //float md = posInput.deviceDepth * 1000;
-        //float finalColor = abs(ddx(md)) + abs(ddy(md));
+        //md = posInput.deviceDepth * 1000;
+        //finalColor = abs(ddx(md)) + abs(ddy(md));
+        //finalColor = saturate(finalColor);
+        
+        // ddx & ddy outline by linear depth
+        //md = posInput.linearDepth * 20;
+        //finalColor = abs(ddx(md)) + abs(ddy(md));
         //finalColor = saturate(finalColor); 
-        //return finalColor;
+        
+        // ddx & ddy outline by world normal
+        //NormalData normalData;
+        //
+        //DecodeFromNormalBuffer(posInput.positionSS, normalData);
+        //
+        //mn = normalData.normalWS;
+        //finalColor = abs(ddx(mn)) + abs(ddy(mn));
+        //finalColor = saturate(finalColor); 
         
         // offset outline by world normal
-        float linearDepth = posInput.linearDepth;
-        int outlineWidth = _OutlineWidth;
-        outlineWidth = saturate(1 - linearDepth / 10000) * 3; 
+        linearDepth = posInput.linearDepth;
+        outlineWidth = _OutlineWidth;
+        outlineWidth = saturate(1 - linearDepth / 1000) * outlineWidth; 
         
         NormalData normalData0;
         NormalData normalData1;
         NormalData normalData2;
-        DecodeFromNormalBuffer(posInput.positionSS, normalData0);
-        DecodeFromNormalBuffer(posInput.positionSS + float3(outlineWidth,0,0), normalData1);
-        DecodeFromNormalBuffer(posInput.positionSS + float3(0,outlineWidth,0), normalData2);
-        float distanceX = distance(normalData0.normalWS, normalData1.normalWS);
-        float distanceY = distance(normalData0.normalWS, normalData2.normalWS);
-        float distance = distanceX + distanceY;
-        distance = distance / _DivideFactor; 
         
-        distance = ((distance - 0.5f) * _ContrastInput) + 0.5f;
-        distance = saturate(distance);
-        float4 finalColor = lerp(color, _OutlineColor, distance);
-                
+        DecodeFromNormalBuffer(posInput.positionSS, normalData0);
+        DecodeFromNormalBuffer(posInput.positionSS + float2(outlineWidth,0), normalData1);
+        DecodeFromNormalBuffer(posInput.positionSS + float2(0,outlineWidth), normalData2);
+        
+        distanceXNormal = distance(normalData0.normalWS, normalData1.normalWS);
+        distanceYNormal = distance(normalData0.normalWS, normalData2.normalWS);
+        distanceSumNormal = distanceXNormal + distanceYNormal;
+        distanceSumNormal = distanceSumNormal / _DivideFactor; 
+        
+        // offset outline by device depth
+        linearDepth = posInput.linearDepth;
+        outlineWidth = _OutlineWidth;
+        outlineWidth = saturate(1 - linearDepth / 10000) * outlineWidth;
+         
+        float2 positionCS0 = varyings.positionCS.xy;
+        float depth0 = LoadCameraDepth(positionCS0);
+        PositionInputs posInput0 = GetPositionInput(positionCS0, _ScreenSize.zw, depth, UNITY_MATRIX_I_VP, UNITY_MATRIX_V);
+        float2 positionCS1 = varyings.positionCS.xy + float2(outlineWidth,0);
+        float depth1 = LoadCameraDepth(positionCS1);
+        PositionInputs posInput1 = GetPositionInput(positionCS1, _ScreenSize.zw, depth1, UNITY_MATRIX_I_VP, UNITY_MATRIX_V);
+        float2 positionCS2 = varyings.positionCS.xy + float2(0,outlineWidth);
+        float depth2 = LoadCameraDepth(positionCS2);
+        PositionInputs posInput2 = GetPositionInput(positionCS2, _ScreenSize.zw, depth2, UNITY_MATRIX_I_VP, UNITY_MATRIX_V);
+        
+        distanceXDepth = distance(posInput0.linearDepth, posInput1.linearDepth);
+        distanceYDepth = distance(posInput0.linearDepth, posInput2.linearDepth);
+        distanceSumDepth = distanceXDepth + distanceYDepth;
+        
+        //distanceSum = _NormalFactor * distanceSumNormal + (1-_NormalFactor) * distanceSumDepth;
+        distanceSum = max(distanceSumDepth, distanceSumNormal);
+        
+        distanceSum = distanceSum / _DivideFactor;
+        distanceSum = Contrast(_ContrastInput, distanceSum);
+        distanceSum = saturate(distanceSum);
+        
+        //color = float4(0,0,0,1);
+        finalColor = lerp(color, _OutlineColor, distanceSum);
+        //finalColor = color + distanceSum * _OutlineColor;
+        
         return finalColor;
         
         // Fade value allow you to increase the strength of the effect while the camera gets closer to the custom pass volume
-        //float f = 1 - abs(_FadeValue * 2 - 1);
-        //return float4(color.rgb + f, color.a);
+        float f = 1 - abs(_FadeValue * 2 - 1);
+        return float4(color.rgb + f, color.a);
     }
 
     ENDHLSL

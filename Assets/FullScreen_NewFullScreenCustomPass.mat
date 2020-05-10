@@ -59,7 +59,7 @@ Material:
     - _AlphaSrcBlend: 1
     - _BlendMode: 0
     - _ColorMask: 15
-    - _ContrastInput: 3.48
+    - _ContrastInput: 3.78
     - _ContrastThreshold: 0.5
     - _CullMode: 2
     - _CullModeForward: 2
@@ -88,6 +88,7 @@ Material:
     - _EmissiveIntensityUnit: 0
     - _EnableFogOnTransparent: 1
     - _IncludeIndirectLighting: 1
+    - _NormalFactor: 0.5
     - _OutlineWidth: 2
     - _ReceivesSSR: 0
     - _RenderQueueType: 1
