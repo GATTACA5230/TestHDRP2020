@@ -68,11 +68,14 @@
         float r = color.r;
         float ddxx = ddx(r);
         float ddyy = ddy(r);
+        float ddxy = (ddxx + ddyy)/2;
         float finalColor = float4(r,r,r,1);
-        if(_DDX)
+        if(_DDX && !_DDY)
             finalColor = float4(ddxx,ddxx,ddxx,1);
-        if(_DDY)
+        if(_DDY && !_DDX)
             finalColor = float4(ddyy,ddyy,ddyy,1);
+        if(_DDX && _DDY)
+            finalColor = float4(ddxy,ddxy,ddxy,1);
         return finalColor;
 
         // Fade value allow you to increase the strength of the effect while the camera gets closer to the custom pass volume
