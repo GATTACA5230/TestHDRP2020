@@ -91,55 +91,59 @@
         float linearDepth;
         float md;
         float mn;
+        NormalData normalData;
 
         // Add your custom pass code here
         
-        // get color
+        // get color method 1
+        //finalColor = color;
         
-        //// Method 1
-        ////finalColor = color;
-        //
-        ////Method2
+        // get color method 2
         //// Load the camera color buffer at the mip 0 if we're not at the before rendering injection point
         //if (_CustomPassInjectionPoint != CUSTOMPASSINJECTIONPOINT_BEFORE_RENDERING)
         //    color = float4(CustomPassSampleCameraColor(varyings.positionCS.xy * _ScreenSize.zw, 0), 1);
         //finalColor = color;
         
-        // get device depth
+        // get device depth method 1
+        //deviceDepth = depth;
         
-        //// Method 1
-        ////deviceDepth = depth;
-        //
-        //// Method 2
-        ////deviceDepth = posInput.deviceDepth;
-        //
-        //// Method 3
-        ////deviceDepth = SampleCameraDepth(varyings.positionCS.xy * _ScreenSize.zw);
-        //
-        //// Method 4 (Incorrect result)
+        // get device depth method 2
+        //deviceDepth = posInput.deviceDepth;
+        
+        // get device depth method 3
+        //deviceDepth = SampleCameraDepth(varyings.positionCS.xy * _ScreenSize.zw);
+        
+        // get device depth method 4 (Incorrect result)
         //deviceDepth = SampleCameraDepthSK(varyings.positionCS.xy * _ScreenSize.zw);
-        //
+        
         //finalColor = float4(deviceDepth,deviceDepth,deviceDepth,1);
         
         // get linear depth
         //linearDepth = posInput.linearDepth;
         //finalColor = float4(linearDepth,linearDepth,linearDepth,1);
         
-        // get absolute world position
+        //get absolute world position
         //float3 positionWS = posInput.positionWS;
         //positionWS = GetAbsolutePositionWS(positionWS);
         //finalColor = float4(positionWS,1);
         
-        // get world normal
-        NormalData normalData;
         
-        // Method 1
-        DecodeFromNormalBuffer(posInput.positionSS, normalData);
+        // get world normal method 1
+        //DecodeFromNormalBuffer(posInput.positionSS, normalData);
         
-        // Method 2
+        // get world normal method 2
         //DecodeFromNormalBufferNDC(posInput.positionNDC, normalData);
         
-        finalColor = float4(normalData.normalWS,1);
+        //float3 normal = normalData.normalWS;
+        //finalColor = float4(normalData.normalWS,1);
+        
+        // get positionNDC[0, 1)
+        //float2 positionNDC = posInput.positionNDC;
+        //finalColor = float4(positionNDC,0,1);
+        
+        // get clip space position
+        //float4 positionCS = ComputeClipSpacePosition(posInput.positionNDC, posInput.deviceDepth);
+        //finalColor = positionCS;
         
         // get UNITY_MATRIX_I_VP
         //if(posInput.positionNDC.x < 0.5 && posInput.positionNDC.y < 0.5)
@@ -154,32 +158,21 @@
         //if(posInput.positionNDC.x > 0.5 && posInput.positionNDC.y > 0.5)
         //    finalColor =  UNITY_MATRIX_I_VP[3];
         
-        // get positionNDC[0, 1)
-        //float2 positionNDC = posInput.positionNDC;
-        //finalColor = float4(positionNDC,0,1);
-        
-        // get clip space position
-        //float4 positionCS = ComputeClipSpacePosition(posInput.positionNDC, posInput.deviceDepth);
-        //finalColor = positionCS;
-        
         // ddx & ddy outline by device depth
         //md = posInput.deviceDepth * 1000;
         //finalColor = abs(ddx(md)) + abs(ddy(md));
         //finalColor = saturate(finalColor);
         
         // ddx & ddy outline by linear depth
-        //md = posInput.linearDepth * 20;
+        //md = posInput.linearDepth * 10;
         //finalColor = abs(ddx(md)) + abs(ddy(md));
         //finalColor = saturate(finalColor); 
         
         // ddx & ddy outline by world normal
-        //NormalData normalData;
-        //
-        //DecodeFromNormalBuffer(posInput.positionSS, normalData);
-        //
-        //mn = normalData.normalWS;
-        //finalColor = abs(ddx(mn)) + abs(ddy(mn));
-        //finalColor = saturate(finalColor); 
+        DecodeFromNormalBuffer(posInput.positionSS, normalData);
+        mn = normalData.normalWS;
+        finalColor = abs(ddx(mn)) + abs(ddy(mn));
+        finalColor = saturate(finalColor); 
         
         // offset outline by world normal
         linearDepth = posInput.linearDepth;
@@ -197,13 +190,12 @@
         distanceXNormal = distance(normalData0.normalWS, normalData1.normalWS);
         distanceYNormal = distance(normalData0.normalWS, normalData2.normalWS);
         distanceSumNormal = distanceXNormal + distanceYNormal;
-        distanceSumNormal = distanceSumNormal / _DivideFactor; 
         
         // offset outline by device depth
         linearDepth = posInput.linearDepth;
         outlineWidth = _OutlineWidth;
         outlineWidth = saturate(1 - linearDepth / 10000) * outlineWidth;
-         
+        
         float2 positionCS0 = varyings.positionCS.xy;
         float depth0 = LoadCameraDepth(positionCS0);
         PositionInputs posInput0 = GetPositionInput(positionCS0, _ScreenSize.zw, depth, UNITY_MATRIX_I_VP, UNITY_MATRIX_V);
@@ -217,6 +209,9 @@
         distanceXDepth = distance(posInput0.linearDepth, posInput1.linearDepth);
         distanceYDepth = distance(posInput0.linearDepth, posInput2.linearDepth);
         distanceSumDepth = distanceXDepth + distanceYDepth;
+        
+        //distanceSum = distanceSumNormal;
+        //distanceSum = distanceSumDepth;
         
         //distanceSum = _NormalFactor * distanceSumNormal + (1-_NormalFactor) * distanceSumDepth;
         distanceSum = max(distanceSumDepth, distanceSumNormal);

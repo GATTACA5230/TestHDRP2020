@@ -21,16 +21,16 @@ Material:
     m_TexEnvs: []
     m_Floats:
     - _BL: 0
-    - _BR: 0.519
+    - _BR: 0
     - _ContrastInput: 1
     - _ContrastThreshold: 0.5
-    - _DDX: 1
-    - _DDY: 0
+    - _DDX: 0
+    - _DDY: 1
     - _DivideFactor: 2
     - _NormalFactor: 1
     - _OutlineWidth: 1
-    - _TL: 0.435
-    - _TR: 0.852
+    - _TL: 0
+    - _TR: 0
     m_Colors:
     - _OutlineColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
