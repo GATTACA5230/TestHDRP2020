@@ -1,13 +1,11 @@
 ﻿Shader "FullScreen/NewFullScreenCustomPass"
 {
     Properties {
-        _ContrastThreshold ("Contrast Threshold", Float) = 0.5
         _ContrastInput ("Contrast Input", Float) = 1
         _DivideFactor ("Divide Factor", Float) = 2
         _OutlineWidth ("Outline Width", Float) = 1
         _OutlineColor ("Outline Color", Color) = (1,1,1,1)
         _NormalFactor ("Normal Factor", Float) = 1
-        
     }
     
     HLSLINCLUDE
@@ -42,7 +40,6 @@
     // There are also a lot of utility function you can use inside Common.hlsl and Color.hlsl,
     // you can check them out in the source code of the core SRP package.
     
-    float _ContrastThreshold;
     float _ContrastInput;
     float _DivideFactor;
     int _OutlineWidth;
@@ -169,10 +166,10 @@
         //finalColor = saturate(finalColor); 
         
         // ddx & ddy outline by world normal
-        DecodeFromNormalBuffer(posInput.positionSS, normalData);
-        mn = normalData.normalWS;
-        finalColor = abs(ddx(mn)) + abs(ddy(mn));
-        finalColor = saturate(finalColor); 
+        //DecodeFromNormalBuffer(posInput.positionSS, normalData);
+        //mn = normalData.normalWS;
+        //finalColor = abs(ddx(mn)) + abs(ddy(mn));
+        //finalColor = saturate(finalColor); 
         
         // offset outline by world normal
         linearDepth = posInput.linearDepth;
